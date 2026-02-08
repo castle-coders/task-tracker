@@ -248,7 +248,9 @@ def task_route():
 
 ## Database Migrations
 
-When modifying models:
+### Development
+
+When modifying models during development:
 
 1. **Make Changes** to `models.py`
 
@@ -266,7 +268,37 @@ When modifying models:
        db.create_all()
    ```
 
-4. **Production**: Use Alembic or similar migration tool
+### Production
+
+We use SQL migration files for production deployments:
+
+1. **Create Migration**: Add a new `.sql` file to `backend/migrations/` with format `NNN_description.sql`
+   - Use sequential numbering (001, 002, 003, etc.)
+   - Include clear comments explaining what the migration does
+   - Write idempotent SQL when possible
+   - **Database-specific syntax**: Create separate `.mysql.sql` or `.sqlite.sql` files if needed
+
+2. **Apply Migration**: Run the migration against your production database
+   - MySQL: `mysql -h HOST -u USER -pPASSWORD DATABASE < migration.sql`
+   - Note: Use backticks around reserved keywords (e.g., `` `rank` ``)
+   - SQLite uses `REAL` for floats, MySQL uses `FLOAT` or `DOUBLE`
+
+3. **Track Migrations**: Keep a log of applied migrations in your deployment documentation
+
+**Example Migration File** (`002_add_task_rank.sql`):
+```sql
+-- Add rank column to task table for drag-and-drop ordering (SQLite)
+ALTER TABLE task ADD COLUMN rank REAL;
+UPDATE task SET rank = id * 1000.0;
+```
+
+**MySQL-specific version** (`002_add_task_rank.mysql.sql`):
+```sql
+-- MySQL version - uses FLOAT and backticks around reserved keyword
+ALTER TABLE task ADD COLUMN `rank` FLOAT;
+UPDATE task SET `rank` = id * 1000.0;
+ALTER TABLE task MODIFY `rank` FLOAT NOT NULL;
+```
 
 ## Testing
 
