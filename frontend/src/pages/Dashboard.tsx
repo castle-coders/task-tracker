@@ -27,16 +27,21 @@ export default function Dashboard() {
     const [priorityFilter, setPriorityFilter] = useState<string>('');
     const [categoryFilter, setCategoryFilter] = useState<string>('');
     const [assigneeFilter, setAssigneeFilter] = useState<string>('');
+    const [dueDateFilter, setDueDateFilter] = useState<string>('');
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         fetchTasks();
         fetchReferences();
-    }, []);
+    }, [dueDateFilter]);
 
     const fetchTasks = async () => {
         try {
-            const { data } = await api.get('/tasks');
+            const params: any = {};
+            if (dueDateFilter) {
+                params.due_within_days = dueDateFilter;
+            }
+            const { data } = await api.get('/tasks', { params });
             setTasks(data);
         } catch (e) {
             console.error(e);
@@ -94,9 +99,10 @@ export default function Dashboard() {
         setPriorityFilter('');
         setCategoryFilter('');
         setAssigneeFilter('');
+        setDueDateFilter('');
     };
 
-    const hasActiveFilters = statusFilter || priorityFilter || categoryFilter || assigneeFilter;
+    const hasActiveFilters = statusFilter || priorityFilter || categoryFilter || assigneeFilter || dueDateFilter;
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -174,7 +180,7 @@ export default function Dashboard() {
                     {showFilters && view !== 'settings' && (
                         <div className={`mb-6 p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm ${view === 'kanban' ? 'm-4 rounded-xl' : 'rounded-xl'}`}>
                             <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center justify-between">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</label>
                                         <select
@@ -220,6 +226,19 @@ export default function Dashboard() {
                                             <option value="">All Assignees</option>
                                             <option value="unassigned">Unassigned</option>
                                             {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Due Date</label>
+                                        <select
+                                            value={dueDateFilter}
+                                            onChange={(e) => setDueDateFilter(e.target.value)}
+                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        >
+                                            <option value="">All Tasks</option>
+                                            <option value="7">Due This Week</option>
+                                            <option value="14">Due in 2 Weeks</option>
+                                            <option value="30">Due in 30 Days</option>
                                         </select>
                                     </div>
                                 </div>

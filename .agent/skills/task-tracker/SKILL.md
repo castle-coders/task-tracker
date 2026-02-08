@@ -49,11 +49,28 @@ Replace `http://localhost:5000` with the actual deployment URL of the Task Track
 
 **Query Parameters**:
 - `status` (optional): Filter by status (`todo`, `in_progress`, `done`)
+- `due_within_days` (optional): Filter tasks by due date within N days
+  - **Includes all overdue tasks** (due_date < today)
+  - **Includes tasks due within N days** (due_date <= today + N)
+  - **Excludes tasks with no due date** (due_date is NULL)
+  - Common values:
+    - `7`: Tasks due this week (+ overdue)
+    - `14`: Tasks due in 2 weeks (+ overdue)
+    - `30`: Tasks due in 30 days (+ overdue)
 
-**Example**:
+**Examples**:
 ```bash
+# Get all todo tasks
 curl -H "X-API-Key: YOUR_API_KEY" \
   "http://localhost:5000/api/tasks?status=todo"
+
+# Get all tasks due within the next 7 days (including overdue)
+curl -H "X-API-Key: YOUR_API_KEY" \
+  "http://localhost:5000/api/tasks?due_within_days=7"
+
+# Get todo tasks due within 30 days
+curl -H "X-API-Key: YOUR_API_KEY" \
+  "http://localhost:5000/api/tasks?status=todo&due_within_days=30"
 ```
 
 **Response**:
@@ -296,6 +313,25 @@ curl -X PUT http://localhost:5000/api/tasks/42 \
   -H "X-API-Key: KEY" \
   -H "Content-Type: application/json" \
   -d '{"status": "done"}'
+```
+
+### Filtering Tasks by Due Date
+
+Get tasks that need attention soon:
+
+```bash
+# Get all tasks due this week (7 days + overdue)
+curl -H "X-API-Key: KEY" \
+  "http://localhost:5000/api/tasks?due_within_days=7"
+
+# Get high-priority tasks due in the next 2 weeks
+# (requires multiple API calls - filter by due date, then filter results by priority)
+curl -H "X-API-Key: KEY" \
+  "http://localhost:5000/api/tasks?due_within_days=14"
+
+# Get todo tasks due in the next 30 days
+curl -H "X-API-Key: KEY" \
+  "http://localhost:5000/api/tasks?status=todo&due_within_days=30"
 ```
 
 ## Error Handling

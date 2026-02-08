@@ -11,6 +11,7 @@ tasks_schema = TaskSchema(many=True)
 @tasks_bp.route('', methods=['GET'])
 @api_key_or_login_required
 def get_tasks():
+    from datetime import datetime, timedelta
     # Filter by query params if needed (status, priority_id, category_id)
     # Allow viewing all tasks (for team view) or filter by assignee
     query = Task.query
@@ -18,6 +19,25 @@ def get_tasks():
     status = request.args.get('status')
     if status:
         query = query.filter_by(status=status)
+    
+    # Filter by due date within N days (includes overdue tasks)
+    due_within_days = request.args.get('due_within_days')
+    if due_within_days:
+        try:
+            days = int(due_within_days)
+            today = datetime.utcnow().date()
+            future_date = today + timedelta(days=days)
+            
+            # Include:
+            # 1. Overdue tasks (due_date < today)
+            # 2. Tasks due within N days (due_date <= today + N)
+            # Exclude tasks with no due date
+            query = query.filter(
+                Task.due_date.isnot(None),
+                Task.due_date <= future_date
+            )
+        except ValueError:
+            pass  # Ignore invalid due_within_days values
         
     tasks = query.all()
     return jsonify(tasks_schema.dump(tasks)), 200
