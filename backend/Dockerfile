@@ -9,10 +9,14 @@ RUN apt-get update && apt-get install -y default-libmysqlclient-dev build-essent
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-COPY . .
+# Copy backend files into a 'backend' subdirectory so module resolution works
+COPY . ./backend/
+
+# Set Python path to current directory so 'from backend...' works
+ENV PYTHONPATH=/app
 
 # Expose Flask port
 EXPOSE 5000
 
-# Run with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:create_app()"]
+# Run with Gunicorn, referencing the app factory in the backend package
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "backend.app:create_app()"]
