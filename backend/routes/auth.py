@@ -45,7 +45,7 @@ def login():
             return jsonify({'2fa_required': True}), 200
             
         login_user(user)
-        return jsonify({'message': 'Logged in successfully', 'user': {'id': user.id, 'name': user.name, 'email': user.email}}), 200
+        return jsonify({'message': 'Logged in successfully', 'user': {'id': user.id, 'name': user.name, 'email': user.email, 'is_admin': user.is_admin}}), 200
         
     return jsonify({'error': 'Invalid email or password'}), 401
 
@@ -70,7 +70,7 @@ def login_2fa():
     if totp.verify(code):
         login_user(user)
         del session['2fa_pending_user_id']
-        return jsonify({'message': 'Logged in successfully', 'user': {'id': user.id, 'name': user.name, 'email': user.email}}), 200
+        return jsonify({'message': 'Logged in successfully', 'user': {'id': user.id, 'name': user.name, 'email': user.email, 'is_admin': user.is_admin}}), 200
         
     return jsonify({'error': 'Invalid 2FA code'}), 400
 
@@ -87,6 +87,7 @@ def get_current_user():
         'id': current_user.id, 
         'name': current_user.name, 
         'email': current_user.email,
+        'is_admin': current_user.is_admin,
         'has_totp': bool(current_user.totp_secret)
     }), 200
 
@@ -275,7 +276,7 @@ def passkey_login_verify():
         del session['passkey_login_state']
         del session['passkey_login_user_id']
         
-        return jsonify({'message': 'Logged in with Passkey', 'user': {'id': user.id, 'name': user.name, 'email': user.email}}), 200
+        return jsonify({'message': 'Logged in with Passkey', 'user': {'id': user.id, 'name': user.name, 'email': user.email, 'is_admin': user.is_admin}}), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 400

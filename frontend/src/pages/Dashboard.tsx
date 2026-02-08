@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import ListView from '../components/ListView';
 import KanbanView from '../components/KanbanView';
 import Sidebar from '../components/Sidebar';
@@ -7,10 +8,11 @@ import SettingsView from '../components/SettingsView';
 import TaskModal from '../components/TaskModal';
 import api from '../api/client';
 import type { Task, Category, Priority, User } from '../types';
-import { Plus, Menu, Filter, X } from 'lucide-react';
+import { Plus, Menu, Filter, X, Shield } from 'lucide-react';
 
 export default function Dashboard() {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [view, setView] = useState<'list' | 'kanban' | 'settings'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -142,6 +144,15 @@ export default function Dashboard() {
                                 title="Toggle Filters"
                             >
                                 <Filter size={20} />
+                            </button>
+                        )}
+                        {user?.is_admin && (
+                            <button
+                                onClick={() => navigate('/admin')}
+                                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                                title="Admin Panel"
+                            >
+                                <Shield size={20} />
                             </button>
                         )}
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
