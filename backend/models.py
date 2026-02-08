@@ -51,6 +51,7 @@ class Task(db.Model):
     description = db.Column(db.Text)
     due_date = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='todo') # todo, in_progress, done
+    rank = db.Column(db.Float, nullable=False, default=0.0)  # For drag-and-drop ordering
     
     assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))

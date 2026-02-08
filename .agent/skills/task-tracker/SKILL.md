@@ -56,6 +56,11 @@ Replace `http://localhost:5000` with the actual deployment URL of the Task Track
   - Common values:
     - `7`: Tasks due this week (+ overdue)
     - `14`: Tasks due in 2 weeks (+ overdue)
+
+**Task Ordering**:
+- Tasks are ordered by **status** (done tasks appear last), then by **rank** ascending
+- The `rank` field enables drag-and-drop reordering in the UI and the order in which tasks should be completed. A lower rank means the task should be completed sooner.
+- Rank values are automatically assigned to new tasks
     - `30`: Tasks due in 30 days (+ overdue)
 
 **Examples**:
@@ -81,6 +86,7 @@ curl -H "X-API-Key: YOUR_API_KEY" \
     "title": "Implement feature X",
     "description": "Add new functionality...",
     "status": "todo",
+    "rank": 1000.0,
     "priority_id": 2,
     "category_id": 1,
     "assignee_id": 5,
@@ -102,6 +108,7 @@ curl -H "X-API-Key: YOUR_API_KEY" \
 - `category_id`: Category ID (integer, optional)
 - `status`: Task status (`todo`, `in_progress`, `done`)
 - `due_date`: Due date in ISO format (string, optional)
+- `rank`: Task rank for ordering (float, optional - auto-assigned if not provided)
 
 **Example**:
 ```bash
@@ -125,6 +132,7 @@ curl -X POST http://localhost:5000/api/tasks \
   "title": "New Task",
   "description": "Task description",
   "status": "todo",
+  "rank": 5000.0,
   "priority_id": 1,
   "category_id": 2,
   "assignee_id": 5,
@@ -133,6 +141,8 @@ curl -X POST http://localhost:5000/api/tasks \
   "updated_at": "2026-02-07T17:45:00"
 }
 ```
+
+**Note**: If `rank` is not provided, it is automatically set to `max(existing_rank) + 1000`, placing the task at the end of the list.
 
 ### 3. Get Task Details
 
@@ -148,22 +158,33 @@ curl -H "X-API-Key: YOUR_API_KEY" \
 
 **Endpoint**: `PUT /api/tasks/:id`
 
-**Allowed Fields** (all optional):
+**Updatable Fields**:
 - `title`: Task title
 - `description`: Task description
 - `status`: Task status
 - `priority_id`: Priority ID
 - `category_id`: Category ID
 - `assignee_id`: Assignee user ID
-- `due_date`: Due date in ISO format
+- `due_date`: Due date
+- `rank`: Task rank for ordering (used for drag-and-drop reordering)
 
-**Example**:
+**Example - Update task rank**:
+```bash
+curl -X PUT http://localhost:5000/api/tasks/42 \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"rank": 1500.5}'
+```
+
+**Example - Update multiple fields**:
 ```bash
 curl -X PUT http://localhost:5000/api/tasks/42 \
   -H "X-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "status": "done"
+    "title": "Updated Task Title",
+    "status": "in_progress",
+    "rank": 2250.0
   }'
 ```
 

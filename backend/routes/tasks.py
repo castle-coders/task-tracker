@@ -12,6 +12,7 @@ tasks_schema = TaskSchema(many=True)
 @api_key_or_login_required
 def get_tasks():
     from datetime import datetime, timedelta
+    from sqlalchemy import case
     # Filter by query params if needed (status, priority_id, category_id)
     # Allow viewing all tasks (for team view) or filter by assignee
     query = Task.query
@@ -38,7 +39,14 @@ def get_tasks():
             )
         except ValueError:
             pass  # Ignore invalid due_within_days values
-        
+    
+    # Order by status (done last), then by rank for drag-and-drop ordering
+    # Using CASE to put 'done' tasks at the bottom
+    status_order = case(
+        (Task.status == 'done', 2),
+        else_=1
+    )
+    query = query.order_by(status_order, Task.rank.asc())
     tasks = query.all()
     return jsonify(tasks_schema.dump(tasks)), 200
 
@@ -54,6 +62,12 @@ def create_task():
         # Note: preventing assignee_id override to current_user
         user = getattr(g, 'current_user', current_user)
         data['assignee_id'] = user.id
+        
+        # Auto-assign rank if not provided (add to end of list)
+        if 'rank' not in data or data['rank'] is None:
+            max_rank = db.session.query(db.func.max(Task.rank)).scalar() or 0
+            data['rank'] = max_rank + 1000.0
+        
         task = task_schema.load(data, session=db.session)
         
         db.session.add(task)
@@ -93,6 +107,7 @@ def update_task(task_id):
         if 'priority_id' in data: task.priority_id = data['priority_id']
         if 'category_id' in data: task.category_id = data['category_id']
         if 'assignee_id' in data: task.assignee_id = data['assignee_id']
+        if 'rank' in data: task.rank = float(data['rank'])
         if 'due_date' in data and data['due_date']: 
              from datetime import datetime
              # Handle ISO format from JS (e.g. 2023-10-27T10:00:00.000Z)

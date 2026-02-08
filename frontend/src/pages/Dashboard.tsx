@@ -80,6 +80,33 @@ export default function Dashboard() {
         }
     };
 
+    const handleRankUpdate = async (id: number, rank: number) => {
+        // Optimistic update with re-sorting to match backend order
+        const updatedTasks = tasks.map(t => t.id === id ? { ...t, rank } : t);
+
+        // Sort to match backend: status (done last), then rank
+        const sortedTasks = updatedTasks.sort((a, b) => {
+            // Status order: done=2, everything else=1
+            const aStatus = a.status === 'done' ? 2 : 1;
+            const bStatus = b.status === 'done' ? 2 : 1;
+
+            if (aStatus !== bStatus) {
+                return aStatus - bStatus;
+            }
+
+            // Within same status group, sort by rank
+            return (a.rank ?? 0) - (b.rank ?? 0);
+        });
+
+        setTasks(sortedTasks);
+
+        try {
+            await api.put(`/tasks/${id}`, { rank });
+        } catch (e) {
+            fetchTasks(); // Revert on fail
+        }
+    };
+
     const filteredTasks = tasks.filter(task => {
         if (statusFilter && task.status !== statusFilter) return false;
         if (priorityFilter && (task.priority?.id !== Number(priorityFilter))) return false;
@@ -259,12 +286,14 @@ export default function Dashboard() {
                             <ListView
                                 tasks={filteredTasks}
                                 onEdit={(t) => { setEditingTask(t); setIsModalOpen(true); }}
+                                onUpdateRank={handleRankUpdate}
                             />
                         ) : view === 'kanban' ? (
                             <KanbanView
                                 tasks={filteredTasks}
                                 onEdit={(t) => { setEditingTask(t); setIsModalOpen(true); }}
                                 onUpdateStatus={handleStatusUpdate}
+                                onUpdateRank={handleRankUpdate}
                             />
                         ) : (
                             <SettingsView />

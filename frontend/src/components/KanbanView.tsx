@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import type { Task } from '../types';
-import { DndContext, type DragEndEvent, type DragStartEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, DragOverlay } from '@dnd-kit/core';
+import { DndContext, type DragEndEvent, type DragStartEvent, type DragOverEvent, useSensor, useSensors, PointerSensor, DragOverlay, useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Calendar, User as UserIcon } from 'lucide-react';
 
 interface KanbanViewProps {
     tasks: Task[];
     onEdit: (task: Task) => void;
     onUpdateStatus: (taskId: number, newStatus: string) => void;
+    onUpdateRank: (taskId: number, newRank: number) => void;
 }
 
 const COLUMNS = [
@@ -15,63 +18,26 @@ const COLUMNS = [
     { id: 'done', title: 'Done' }
 ];
 
-function KanbanCard({ task, onClick, isOverlay }: { task: Task, onClick?: () => void, isOverlay?: boolean }) {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-        id: task.id,
-    });
+function SortableKanbanCard({ task, onClick }: { task: Task, onClick?: () => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: task.id });
 
-    const style = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: 50,
-    } : undefined;
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return null;
         return new Date(dateString).toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
-
-    if (isOverlay) {
-        return (
-            <div
-                className="p-3 rounded-lg border bg-white shadow-xl scale-105 rotate-2 border-indigo-200 dark:bg-gray-800 dark:border-indigo-500 cursor-grabbing w-[280px]"
-            >
-                <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                        {task.category?.name || 'No Category'}
-                    </span>
-                    {task.priority && (
-                        <div className={`h-1.5 w-8 rounded-full ${task.priority.level >= 10 ? 'bg-red-500' : task.priority.level >= 5 ? 'bg-yellow-500' : 'bg-green-500'}`} title={task.priority.name} />
-                    )}
-                </div>
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white leading-tight mb-2">{task.title}</h4>
-
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        <UserIcon size={14} className={task.assignee ? "text-indigo-500" : "text-gray-300"} />
-                        <span>{task.assignee ? task.assignee.name : 'Unassigned'}</span>
-                    </div>
-                    {task.due_date && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            <Calendar size={14} />
-                            <span>{formatDate(task.due_date)}</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    if (isDragging) {
-        return (
-            <div
-                ref={setNodeRef}
-                style={style}
-                {...listeners}
-                {...attributes}
-                className="p-3 rounded-lg mb-2 bg-gray-200/50 dark:bg-gray-700/50 h-[100px] border-2 border-dashed border-gray-300 dark:border-gray-600"
-            />
-        );
-    }
 
     return (
         <div ref={setNodeRef} style={style} {...listeners} {...attributes}
@@ -124,20 +90,22 @@ function KanbanColumn({ id, title, tasks, onEdit }: { id: string, title: string,
                 </span>
             </div>
             <div ref={setNodeRef} className="flex-1 overflow-y-auto px-2 pb-2 custom-scrollbar">
-                <div className="flex flex-col gap-1 min-h-[50px]">
-                    {tasks.map(task => (
-                        <KanbanCard key={task.id} task={task} onClick={() => onEdit(task)} />
-                    ))}
-                    {tasks.length === 0 && (
-                        <div className="h-16 flex items-center justify-center text-gray-400 text-xs italic">
-                            Drop tasks here
-                        </div>
-                    )}
-                </div>
+                <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-1 min-h-[50px]">
+                        {tasks.map(task => (
+                            <SortableKanbanCard key={task.id} task={task} onClick={() => onEdit(task)} />
+                        ))}
+                        {tasks.length === 0 && (
+                            <div className="h-16 flex items-center justify-center text-gray-400 text-xs italic">
+                                Drop tasks here
+                            </div>
+                        )}
+                    </div>
+                </SortableContext>
             </div>
             <div className="p-2">
                 <button
-                    onClick={() => onEdit({} as any)} // Placeholder for 'Add another card' logic if needed, currently opens empty modal
+                    onClick={() => onEdit(null as any)}
                     className="w-full text-left p-2 text-sm text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-md transition-colors flex items-center gap-2"
                 >
                     <span className="text-lg leading-none">+</span> Add a card
@@ -147,7 +115,7 @@ function KanbanColumn({ id, title, tasks, onEdit }: { id: string, title: string,
     );
 }
 
-export default function KanbanView({ tasks, onEdit, onUpdateStatus }: KanbanViewProps) {
+export default function KanbanView({ tasks, onEdit, onUpdateStatus, onUpdateRank }: KanbanViewProps) {
     const [activeId, setActiveId] = useState<number | null>(null);
 
     const sensors = useSensors(
@@ -162,14 +130,79 @@ export default function KanbanView({ tasks, onEdit, onUpdateStatus }: KanbanView
         setActiveId(event.active.id as number);
     };
 
+    const handleDragOver = (_event: DragOverEvent) => {
+        // Could be used for visual feedback, but not needed for our implementation
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveId(null);
 
-        if (over && active.id) {
-            const task = tasks.find(t => t.id === active.id);
-            if (task && task.status !== over.id) {
-                onUpdateStatus(task.id, over.id as string);
+        if (!over || !active.id) return;
+
+        const activeTask = tasks.find(t => t.id === active.id);
+        if (!activeTask) return;
+
+        // Determine if we're dropping on a column or a task
+        const overColumn = COLUMNS.find(col => col.id === over.id);
+        const overTask = tasks.find(t => t.id === over.id);
+
+        if (overColumn) {
+            // Dropped on a column (empty area or column itself)
+            if (activeTask.status !== overColumn.id) {
+                // Status change
+                onUpdateStatus(activeTask.id, overColumn.id);
+            }
+        } else if (overTask) {
+            // Dropped on another task
+            const targetStatus = overTask.status;
+
+            if (activeTask.status !== targetStatus) {
+                // Status change - update status and rank
+                onUpdateStatus(activeTask.id, targetStatus);
+
+                // Also update rank based on position in new column
+                const tasksInTargetColumn = tasks.filter(t => t.status === targetStatus && t.id !== activeTask.id);
+                const overIndex = tasksInTargetColumn.findIndex(t => t.id === overTask.id);
+
+                let newRank: number;
+                if (overIndex === 0) {
+                    newRank = (overTask.rank ?? 1000) / 2;
+                } else if (overIndex === tasksInTargetColumn.length - 1) {
+                    newRank = (overTask.rank ?? 0) + 1000;
+                } else {
+                    const prevRank = tasksInTargetColumn[overIndex - 1]?.rank ?? 0;
+                    const nextRank = overTask.rank ?? prevRank + 2000;
+                    newRank = (prevRank + nextRank) / 2;
+                }
+
+                onUpdateRank(activeTask.id, newRank);
+            } else {
+                // Reordering within the same column
+                const tasksInColumn = tasks.filter(t => t.status === activeTask.status);
+                const activeIndex = tasksInColumn.findIndex(t => t.id === activeTask.id);
+                const overIndex = tasksInColumn.findIndex(t => t.id === overTask.id);
+
+                if (activeIndex !== overIndex) {
+                    // Calculate new rank
+                    let newRank: number;
+                    if (overIndex === 0) {
+                        newRank = (tasksInColumn[0]?.rank ?? 1000) / 2;
+                    } else if (overIndex === tasksInColumn.length - 1) {
+                        newRank = (tasksInColumn[tasksInColumn.length - 1]?.rank ?? 0) + 1000;
+                    } else {
+                        // Inserting between tasks
+                        const prevRank = activeIndex < overIndex
+                            ? tasksInColumn[overIndex]?.rank ?? 0
+                            : tasksInColumn[overIndex - 1]?.rank ?? 0;
+                        const nextRank = activeIndex < overIndex
+                            ? tasksInColumn[overIndex + 1]?.rank ?? prevRank + 2000
+                            : tasksInColumn[overIndex]?.rank ?? prevRank + 2000;
+                        newRank = (prevRank + nextRank) / 2;
+                    }
+
+                    onUpdateRank(activeTask.id, newRank);
+                }
             }
         }
     };
@@ -177,7 +210,7 @@ export default function KanbanView({ tasks, onEdit, onUpdateStatus }: KanbanView
     const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
     return (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="flex h-full overflow-x-auto overflow-y-hidden pb-4 pt-4 items-start content-start bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
                 {COLUMNS.map(col => (
                     <KanbanColumn
@@ -192,7 +225,31 @@ export default function KanbanView({ tasks, onEdit, onUpdateStatus }: KanbanView
                 <div className="w-6 shrink-0" />
             </div>
             <DragOverlay>
-                {activeTask ? <KanbanCard task={activeTask} isOverlay /> : null}
+                {activeTask ? (
+                    <div className="p-3 rounded-lg border bg-white shadow-xl scale-105 rotate-2 border-indigo-200 dark:bg-gray-800 dark:border-indigo-500 cursor-grabbing w-[280px]">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                                {activeTask.category?.name || 'No Category'}
+                            </span>
+                            {activeTask.priority && (
+                                <div className={`h-1.5 w-8 rounded-full ${activeTask.priority.level >= 10 ? 'bg-red-500' : activeTask.priority.level >= 5 ? 'bg-yellow-500' : 'bg-green-500'}`} title={activeTask.priority.name} />
+                            )}
+                        </div>
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white leading-tight mb-2">{activeTask.title}</h4>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                <UserIcon size={14} className={activeTask.assignee ? "text-indigo-500" : "text-gray-300"} />
+                                <span>{activeTask.assignee ? activeTask.assignee.name : 'Unassigned'}</span>
+                            </div>
+                            {activeTask.due_date && (
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <Calendar size={14} />
+                                    <span>{new Date(activeTask.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
             </DragOverlay>
         </DndContext>
     );

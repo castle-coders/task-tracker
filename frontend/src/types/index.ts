@@ -31,6 +31,7 @@ export interface Task {
     description?: string;
     due_date?: string;
     status: 'todo' | 'in_progress' | 'done';
+    rank?: number;  // For drag-and-drop ordering (not displayed in UI)
     assignee?: User;
     category?: Category;
     priority?: Priority;
