@@ -59,9 +59,10 @@ def create_task():
     
     try:
         # Validate and deserialize input
-        # Note: preventing assignee_id override to current_user
-        user = getattr(g, 'current_user', current_user)
-        data['assignee_id'] = user.id
+        # Default assignee to the authenticated user if not explicitly provided
+        if 'assignee_id' not in data or data['assignee_id'] is None:
+            user = getattr(g, 'current_user', current_user)
+            data['assignee_id'] = user.id
         
         # Auto-assign rank if not provided (add to end of list)
         if 'rank' not in data or data['rank'] is None:
