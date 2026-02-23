@@ -12,3 +12,4 @@ marshmallow==3.20.1
 flask-marshmallow==1.1.0
 marshmallow-sqlalchemy==0.29.0
 fido2==1.1.2
+pymysql
